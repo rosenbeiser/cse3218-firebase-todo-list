@@ -11,12 +11,6 @@
 2. [Application Architecture](#application-architecture)
 3. [Features & CRUD Matrix](#features--crud-matrix)
 4. [Project Structure](#project-structure)
-5. [Step-by-Step Firebase Setup Guide](#step-by-step-firebase-setup-guide)
-6. [Firestore Security Rules](#firestore-security-rules)
-7. [Running the Application on macOS / Xcode 15.2](#running-the-application-on-macos--xcode-152)
-8. [GitHub Repository Setup & Submission Guide](#github-repository-setup--submission-guide)
-9. [Troubleshooting Guide](#troubleshooting-guide)
-10. [Requirements Verification Status](#requirements-verification-status)
 
 ---
 
