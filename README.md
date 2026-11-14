@@ -1,6 +1,5 @@
 # Mobile Computing Lab Assignment – Firebase Integrated Todo List Application
 
-**Course:** Mobile Computing (CSE 3218)  
 **Development Target:** iOS 16.0+ | Xcode 15.2 | macOS 13 (VMware)  
 **Frameworks:** SwiftUI, Firebase iOS SDK (Authentication, Cloud Firestore)  
 **Architecture:** Model-View-ViewModel (MVVM)
