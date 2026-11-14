@@ -1,0 +1,143 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userUID}
+    // Document ID: Firebase Auth UID of the user
+    // Fields:
+    //   - email: string (optional, valid email format, max 254 chars)
+    //   - displayName: string (optional, string, max 100 chars)
+    //   - createdAt: timestamp (optional, immutable after creation)
+    //   - updatedAt: timestamp (optional, valid timestamp)
+    //   - uid: string (optional, must match userUID, immutable after creation)
+    //
+    // Subcollection: users/{userUID}/tasks/{taskID}
+    // Document ID: Unique Task ID (auto-generated or client UUID)
+    // Fields:
+    //   - title: string (required, non-empty, 1-200 chars)
+    //   - description: string (optional, max 2000 chars)
+    //   - isCompleted: bool (optional/boolean, defaults to false in app)
+    //   - createdAt: timestamp (required, immutable after creation)
+    //   - updatedAt: timestamp (required, valid timestamp)
+    //   - id: string (optional, if present must match taskID, immutable)
+    //   - userId: string (optional, if present must match userUID, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the request is from an authenticated user
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Check if the authenticated user owns the resource path
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Validate email format
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() <= 254 &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Validate that immutable fields have not been modified on update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    // Validator for user profile document at /users/{userUID}
+    function isValidUserDoc(data, userUID) {
+      let allowedFields = ['email', 'displayName', 'createdAt', 'updatedAt', 'uid'];
+      return data.keys().hasOnly(allowedFields) &&
+        (!('email' in data) || isValidEmail(data.email)) &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+        (!('createdAt' in data) || data.createdAt is timestamp) &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+        (!('uid' in data) || (data.uid is string && data.uid == userUID));
+    }
+
+    // Validator for task document at /users/{userUID}/tasks/{taskID}
+    function isValidTaskDoc(data, userUID, taskId) {
+      let allowedFields = ['title', 'description', 'isCompleted', 'createdAt', 'updatedAt', 'id', 'userId'];
+      return data.keys().hasOnly(allowedFields) &&
+        // Required fields
+        ('title' in data) &&
+        ('createdAt' in data) &&
+        ('updatedAt' in data) &&
+        // Title constraints: non-empty string, 1 to 200 characters, not purely whitespace
+        data.title is string &&
+        data.title.size() >= 1 &&
+        data.title.size() <= 200 &&
+        data.title.matches('.*\\S.*') &&
+        // Description constraints: optional string up to 2000 characters
+        (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+        // isCompleted constraints: optional or boolean
+        (!('isCompleted' in data) || (data.isCompleted is bool)) &&
+        // Timestamp constraints: valid timestamps
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        // Identity consistency (if present in document payload)
+        (!('id' in data) || (data.id is string && data.id == taskId)) &&
+        (!('userId' in data) || (data.userId is string && data.userId == userUID));
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Default deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User Profile Document
+    match /users/{userUID} {
+      // Only the authenticated user can read their own profile (protects PII like email)
+      allow read: if isOwner(userUID);
+
+      // User can create their profile if validated and matching UID
+      allow create: if isOwner(userUID) &&
+                       isValidUserDoc(request.resource.data, userUID);
+
+      // User can update profile with validation; createdAt and uid cannot be altered
+      allow update: if isOwner(userUID) &&
+                       isValidUserDoc(request.resource.data, userUID) &&
+                       areImmutableFieldsUnchanged(['createdAt', 'uid']);
+
+      // User can delete their profile
+      allow delete: if isOwner(userUID);
+
+      // Tasks Subcollection
+      match /tasks/{taskID} {
+        // Only the owner can read tasks (supports both single get and collection queries)
+        allow read: if isOwner(userUID);
+
+        // Only the owner can create tasks, requiring valid schema and bounds
+        allow create: if isOwner(userUID) &&
+                         isValidTaskDoc(request.resource.data, userUID, taskID);
+
+        // Only the owner can update tasks; must re-validate schema and protect immutable fields
+        allow update: if isOwner(userUID) &&
+                         isValidTaskDoc(request.resource.data, userUID, taskID) &&
+                         areImmutableFieldsUnchanged(['createdAt', 'id', 'userId']);
+
+        // Only the owner can delete their own tasks
+        allow delete: if isOwner(userUID);
+      }
+    }
+  }
+}

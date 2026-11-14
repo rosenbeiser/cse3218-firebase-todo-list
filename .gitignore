@@ -1,0 +1,31 @@
+# Xcode
+.DS_Store
+*/.DS_Store
+build/
+DerivedData/
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+
+# User-specific Xcode files
+xcuserdata/
+*.xcuserdatad/
+*.xcbkptlist
+
+# Swift Package Manager caches
+.build/
+.swiftpm/
+
+# CocoaPods (if ever used)
+Pods/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Firebase configuration note:
+# Keep GoogleService-Info.plist checked in for academic grading if required by your instructor,
+# or add to .gitignore if instructed to keep credentials private.
+# GoogleService-Info.plist
