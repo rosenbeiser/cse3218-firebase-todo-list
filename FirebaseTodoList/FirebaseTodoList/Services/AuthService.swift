@@ -66,33 +66,42 @@ final class AuthService: ObservableObject {
     /// Maps low-level Firebase Auth errors into clear, friendly error messages for students/users
     private func mapAuthError(_ error: Error) -> Error {
         let nsError = error as NSError
-        guard nsError.domain == AuthErrorDomain,
-              let code = AuthErrorCode(rawValue: nsError.code) else {
+        guard nsError.domain == AuthErrorDomain else {
             return error
         }
         
         let message: String
-        switch code {
-        case .invalidEmail:
-            message = "The email address format is invalid. Please check and try again."
-        case .emailAlreadyInUse:
-            message = "This email is already registered. Please sign in instead."
-        case .wrongPassword, .invalidCredential:
+        if let code = AuthErrorCode.Code(rawValue: nsError.code) {
+            switch code {
+            case .invalidEmail:
+                message = "The email address format is invalid. Please check and try again."
+            case .emailAlreadyInUse:
+                message = "This email is already registered. Please sign in instead."
+            case .wrongPassword:
+                message = "Incorrect email or password. Please verify your credentials."
+            case .userNotFound:
+                message = "No account found with this email. Please register first."
+            case .weakPassword:
+                message = "Password must be at least 6 characters long."
+            case .networkError:
+                message = "Network error. Please check your internet connection."
+            case .userDisabled:
+                message = "This account has been disabled. Please contact support."
+            case .tooManyRequests:
+                message = "Too many failed attempts. Please try again after a few minutes."
+            default:
+                if nsError.code == 17004 || nsError.code == 17009 {
+                    message = "Incorrect email or password. Please verify your credentials."
+                } else {
+                    message = error.localizedDescription
+                }
+            }
+        } else if nsError.code == 17004 || nsError.code == 17009 {
             message = "Incorrect email or password. Please verify your credentials."
-        case .userNotFound:
-            message = "No account found with this email. Please register first."
-        case .weakPassword:
-            message = "Password must be at least 6 characters long."
-        case .networkError:
-            message = "Network error. Please check your internet connection."
-        case .userDisabled:
-            message = "This account has been disabled. Please contact support."
-        case .tooManyRequests:
-            message = "Too many failed attempts. Please try again after a few minutes."
-        default:
+        } else {
             message = error.localizedDescription
         }
         
-        return NSError(domain: "AuthService", code: code.rawValue, userInfo: [NSLocalizedDescriptionKey: message])
+        return NSError(domain: "AuthService", code: nsError.code, userInfo: [NSLocalizedDescriptionKey: message])
     }
 }
