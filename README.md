@@ -126,7 +126,7 @@ FirebaseTodoList/
     │       ├── EmptyStateView.swift
     │       └── LoadingOverlay.swift
     ├── Resources/
-    │   ├── GoogleService-Info.plist    <-- (Replace with your Firebase file)
+    │   ├── GoogleService-Info.plist   
     │   └── Assets.xcassets/
     └── Info.plist
 ```
